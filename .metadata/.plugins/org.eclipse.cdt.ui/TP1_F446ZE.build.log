@@ -1,0 +1,10 @@
+12:19:45 **** Incremental Build of configuration Debug for project TP1_F446ZE ****
+make -j16 all 
+arm-none-eabi-size  TP1_F446ZE.elf 
+   text	   data	    bss	    dec	    hex	filename
+  24108	     16	  21664	  45788	   b2dc	TP1_F446ZE.elf
+Finished building: default.size.stdout
+ 
+
+12:19:45 Build Finished. 0 errors, 0 warnings. (took 245ms)
+

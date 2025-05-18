@@ -1,0 +1,7 @@
+../Core/Src/freertos.c:138:6:MX_FREERTOS_Init	8	static
+../Core/Src/freertos.c:205:6:StartDefaultTask	16	static
+../Core/Src/freertos.c:223:6:printThread	48	static
+../Core/Src/freertos.c:252:6:processThread1	24	static
+../Core/Src/freertos.c:275:6:processThread2	24	static
+../Core/Src/freertos.c:298:6:printStrThread	88	static
+../Core/Src/freertos.c:328:6:processStr	48	static

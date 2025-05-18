@@ -1,0 +1,4 @@
+../Core/Src/freertos.c:95:6:MX_FREERTOS_Init	1
+../Core/Src/freertos.c:146:6:StartDefaultTask	1
+../Core/Src/freertos.c:164:6:announceOscars	1
+../Core/Src/freertos.c:187:6:winnerAnnounce	1

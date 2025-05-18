@@ -1,0 +1,9 @@
+../Core/Src/encoder.c:11:6:encoder_init	1
+../Core/Src/encoder.c:16:6:encoder_update	6
+../Core/Src/encoder.c:39:9:encoder_get_ticks	1
+../Core/Src/encoder.c:43:9:encoder_get_crans	1
+../Core/Src/encoder.c:47:6:encoder_set_min	1
+../Core/Src/encoder.c:51:6:encoder_set_max	1
+../Core/Src/encoder.c:55:6:encoder_reset_position	1
+../Core/Src/encoder.c:60:6:encoder_set_cyclic	1
+../Core/Src/encoder.c:64:6:encoder_set_direction	1

@@ -1,0 +1,7 @@
+../Core/Src/freertos.c:188:6:MX_FREERTOS_Init	8	static
+../Core/Src/freertos.c:264:6:StartDefaultTask	16	static
+../Core/Src/freertos.c:282:6:serialRX	24	static
+../Core/Src/freertos.c:310:6:asciiToMorse	24	static
+../Core/Src/freertos.c:333:6:morseToLED	24	static
+../Core/Src/freertos.c:375:6:emptyRXsendTX	64	static
+../Core/Src/freertos.c:416:6:serialTX	32	static

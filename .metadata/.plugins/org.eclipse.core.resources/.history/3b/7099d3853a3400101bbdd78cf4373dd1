@@ -1,0 +1,14 @@
+#ifndef ENCODER_H
+#define ENCODER_H
+
+#include <stdint.h>
+
+void encoder_init(void);
+void encoder_update(void);  // à appeler dans la tâche
+int32_t encoder_get_ticks(void);
+int32_t encoder_get_crans(void);
+void encoder_set_min(int32_t min);
+void encoder_set_max(int32_t max);
+void encoder_reset_position(void);
+
+#endif
