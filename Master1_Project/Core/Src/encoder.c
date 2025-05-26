@@ -2,20 +2,20 @@
 #include "tim.h"
 
 static int32_t ticks = 0;
-static int32_t crans = 0;
-static int32_t min = 0;
-static int32_t max = 100;
+static int16_t steps = 0;
+static int16_t min = 0;
+static int16_t max = 100;
 static bool is_cyclic = true;
-static bool is_reversed = true;  // <-- nouveau
+static bool is_reversed = true;
 
 void encoder_init(void) {
     ticks = 0;
-    crans = 0;
+    steps = 0;
 }
 
 void encoder_update(void) {
     static int16_t last = 0;
-    int16_t current = __HAL_TIM_GET_COUNTER(&htim2);
+    int16_t current = __HAL_TIM_GET_COUNTER(&htim2); // no mutex required, not a ressource, just a register read
     int16_t delta = current - last;
     last = current;
 
@@ -24,15 +24,15 @@ void encoder_update(void) {
         delta = -delta;
 
     ticks += delta;
-    int32_t new_crans = ticks / 4;
+    int16_t new_steps = (int16_t)(ticks / 4);
 
     if (is_cyclic) {
     	 int32_t range = max - min + 1;
-    	 crans = ((new_crans - min) % range + range) % range + min;
+    	 steps = ((new_steps - min) % range + range) % range + min;
     } else {
-        if (new_crans < min) new_crans = min;
-        if (new_crans > max) new_crans = max;
-        crans = new_crans;
+        if (new_steps < min) new_steps = min;
+        if (new_steps > max) new_steps = max;
+        steps = new_steps;
     }
 }
 
@@ -40,21 +40,21 @@ int32_t encoder_get_ticks(void) {
     return ticks;
 }
 
-int32_t encoder_get_crans(void) {
-    return crans;
+int16_t encoder_get_steps(void) {
+    return steps;
 }
 
-void encoder_set_min(int32_t min_val) {
+void encoder_set_min(int16_t min_val) {
     min = min_val;
 }
 
-void encoder_set_max(int32_t max_val) {
+void encoder_set_max(int16_t max_val) {
     max = max_val;
 }
 
 void encoder_reset_position(void) {
     ticks = 0;
-    crans = 0;
+    steps = 0;
 }
 
 void encoder_set_cyclic(bool enable) {

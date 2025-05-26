@@ -1,0 +1,14 @@
+#ifndef _menu_h_
+#define _menu_h_
+
+#include "main.h"
+
+typedef struct PROGMEM
+{
+    unsigned char state;
+    int16_t step;
+    unsigned char Button;
+    unsigned char nextstate;
+} MENU_NEXTSTATE;
+
+#endif

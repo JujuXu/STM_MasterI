@@ -1,0 +1,13 @@
+#ifndef _menu_h_
+#define _menu_h_
+
+#include "main.h"
+
+typedef struct PROGMEM
+{
+    unsigned char state;
+    unsigned char input;
+    unsigned char nextstate;
+} MENU_NEXTSTATE;
+
+#endif

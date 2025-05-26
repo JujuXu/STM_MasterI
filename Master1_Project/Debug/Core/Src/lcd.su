@@ -1,0 +1,13 @@
+../Core/Src/lcd.c:17:13:fallingEdge	8	static
+../Core/Src/lcd.c:26:14:send4Bits	16	static
+../Core/Src/lcd.c:54:13:sendCommand	16	static
+../Core/Src/lcd.c:66:13:sendData	16	static
+../Core/Src/lcd.c:78:6:clearLCD	8	static
+../Core/Src/lcd.c:84:6:putLCD	16	static
+../Core/Src/lcd.c:89:6:writeLCD	16	static
+../Core/Src/lcd.c:97:6:initLCD	8	static
+../Core/Src/lcd.c:145:6:setCursor	24	static
+../Core/Src/lcd.c:161:6:cursorOn	8	static
+../Core/Src/lcd.c:166:6:blinkOn	8	static
+../Core/Src/lcd.c:171:6:clearDisp	8	static
+../Core/Src/lcd.c:176:6:setDisplay	16	static

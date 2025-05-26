@@ -1,0 +1,28 @@
+#ifndef _menu_h_
+#define _menu_h_
+
+#include "main.h"
+
+typedef struct PROGMEM
+{
+    unsigned char state;
+    int16_t step;
+    unsigned char Button;
+    unsigned char nextstate;
+} MENU_NEXTSTATE;
+
+typedef struct PROGMEM
+{
+    unsigned char state;
+	PGM_P pText;
+    char (*pFunc)(char input);
+} MENU_STATE;
+
+/// MENU TEXT
+const char Txt_INFO[] PROGMEM 		=	"Infos";
+const char Txt_SENSOR[] PROGMEM		= 	"Sensor";
+const char Txt_CONV[] PROGMEM		=	"Conversion Mode";
+const char Txt_ACT[] PROGMEM		=   "Actuator Mode";
+const char Txt_MPU[] PROGMEM		=   "MPU Mode";
+
+#endif

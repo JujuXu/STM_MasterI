@@ -1,0 +1,47 @@
+#ifndef _menu_h_
+#define _menu_h_
+
+#include "main.h"
+
+typedef struct PROGMEM
+{
+    unsigned char state;
+    int16_t step;
+    uint16_t flag;
+    char* text;
+} menu_state_t;
+
+/// MENU TEXT
+const char TXT_INFO[] 		=	"Infos";
+const char TXT_SENSOR[]		= 	"Sensor";
+const char TXT_CONV[]		=	"Conversion Mode";
+const char TXT_ACT[]		=   "Actuator Mode";
+const char TXT_MPU[]		=   "MPU Mode";
+
+// STATE MACHINE
+#define ST_TXT_INFO		1
+#define ST_TXT_SENSOR	2
+#define ST_TXT_CONV		3
+#define ST_TXT_ACT		4
+#define ST_TXT_MPU		5
+
+// FLAGS
+#define FLAG_INFO	0x0001
+#define FLAG_SENSOR	0x0002
+#define FLAG_CONV	0x0003
+#define FLAG_ACT	0x0004
+#define FLAG_MPU	0x0005
+
+const menu_state_t menu_state[] = {
+		// STATE				STEP			FLAG					LCD TEXT
+		{ST_TXT_INFO,			0,				FLAG_INFO,				TXT_INFO},
+		{ST_TXT_SENSOR,			1,				FLAG_SENSOR,			TXT_SENSOR},
+		{ST_TXT_CONV,			2,				FLAG_CONV,				TXT_CONV},
+		{ST_TXT_ACT,			3,				FLAG_ACT,				TXT_ACT},
+		{ST_TXT_MPU,			4,				FLAG_MPU,				TXT_MPU},
+
+		{0,						0,				0,						0},
+
+};
+
+#endif
