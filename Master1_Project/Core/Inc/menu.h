@@ -38,6 +38,11 @@ typedef enum {
     FLAG_MPU    = 0x0010
 } menu_flag_t;
 
+typedef enum {
+    FLAG_SM_ON   = 0x0000,
+    FLAG_SM_OFF   = 0x0001
+} sm_flag_t;
+
 const menu_state_t menu_state[] = {
 	// STATE		STEP	FLAG				TEXT
     {ST_INFO,   	0, 		FLAG_INFO,   		"Infos"},

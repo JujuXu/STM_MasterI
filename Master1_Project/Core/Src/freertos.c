@@ -28,6 +28,7 @@
 #include "tim.h"
 #include "encoder.h"
 #include "lcd.h"
+#include "menu.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -37,7 +38,9 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define FLAG_LED1		0x0001
+#define FLAG_LED2		0x0002
+#define FLAG_LED3		0x0004
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -47,7 +50,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-int32_t enc_step = 0;
+
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -63,17 +66,24 @@ const osThreadAttr_t encoderTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
-/* Definitions for lcdtestTask */
-osThreadId_t lcdtestTaskHandle;
-const osThreadAttr_t lcdtestTask_attributes = {
-  .name = "lcdtestTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityLow,
-};
 /* Definitions for SM_Task */
 osThreadId_t SM_TaskHandle;
 const osThreadAttr_t SM_Task_attributes = {
   .name = "SM_Task",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for ledsTask */
+osThreadId_t ledsTaskHandle;
+const osThreadAttr_t ledsTask_attributes = {
+  .name = "ledsTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for infoFuncTask */
+osThreadId_t infoFuncTaskHandle;
+const osThreadAttr_t infoFuncTask_attributes = {
+  .name = "infoFuncTask",
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
@@ -87,16 +97,22 @@ osEventFlagsId_t funcEventHandle;
 const osEventFlagsAttr_t funcEvent_attributes = {
   .name = "funcEvent"
 };
+/* Definitions for ledEvent */
+osEventFlagsId_t ledEventHandle;
+const osEventFlagsAttr_t ledEvent_attributes = {
+  .name = "ledEvent"
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
-
+void exitFunc(void);
 /* USER CODE END FunctionPrototypes */
 
 void StartDefaultTask(void *argument);
 void encoder(void *argument);
-void lcdTest(void *argument);
 void StateMachine(void *argument);
+void leds(void *argument);
+void infoFunc(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -133,11 +149,14 @@ void MX_FREERTOS_Init(void) {
   /* creation of encoderTask */
   encoderTaskHandle = osThreadNew(encoder, NULL, &encoderTask_attributes);
 
-  /* creation of lcdtestTask */
-  lcdtestTaskHandle = osThreadNew(lcdTest, NULL, &lcdtestTask_attributes);
-
   /* creation of SM_Task */
   SM_TaskHandle = osThreadNew(StateMachine, NULL, &SM_Task_attributes);
+
+  /* creation of ledsTask */
+  ledsTaskHandle = osThreadNew(leds, NULL, &ledsTask_attributes);
+
+  /* creation of infoFuncTask */
+  infoFuncTaskHandle = osThreadNew(infoFunc, NULL, &infoFuncTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -149,6 +168,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of funcEvent */
   funcEventHandle = osEventFlagsNew(&funcEvent_attributes);
+
+  /* creation of ledEvent */
+  ledEventHandle = osEventFlagsNew(&ledEvent_attributes);
 
   /* USER CODE BEGIN RTOS_EVENTS */
   /* add events, ... */
@@ -188,40 +210,11 @@ void encoder(void *argument)
   for(;;)
   {
 		encoder_update();
+		encoder_button_update();
 
 		osDelay(10);  // 100 Hz
   }
   /* USER CODE END encoder */
-}
-
-/* USER CODE BEGIN Header_lcdTest */
-/**
-* @brief Function implementing the lcdtestTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_lcdTest */
-void lcdTest(void *argument)
-{
-  /* USER CODE BEGIN lcdTest */
-	//static char s1[] = "Hello World!";
-	//static char s2[] = "Hihi";
-  /* Infinite loop */
-  for(;;)
-  {
-	  /*
-	clearLCD();
-	setCursor(0, 0);
-	writeLCD(s1);
-	setCursor(0, 1);
-	writeLCD(s2);
-	osDelay(1000);
-	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-	osDelay(1000);
-	HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);*/
-	  osDelay(1);
-  }
-  /* USER CODE END lcdTest */
 }
 
 /* USER CODE BEGIN Header_StateMachine */
@@ -235,28 +228,165 @@ void StateMachine(void *argument)
 {
   /* USER CODE BEGIN StateMachine */
   /* Infinite loop */
+
+  int16_t last_step = -1;
   for(;;)
   {
-	uint32_t flags = osEventFlagsGet(smEventHandle);
+	  uint32_t flags = osEventFlagsGet(smEventHandle);
 
-	if (!(flags & 0x0001)) {
-		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-		osDelay(50);
-		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-		osDelay(50);
+	  if (!(flags & 0x0001))  // tant que menu actif
+	  {
+		encoder_set_min(0);
+		encoder_set_max(4);
 
-		int16_t steps = encoder_get_steps();
+		// Clignotement de la LED pour indiquer "mode menu"
+		osEventFlagsSet(ledEventHandle, FLAG_LED1);
 
-		bool button = False;
+		int16_t step = encoder_get_steps();
 
+		bool button = encoder_get_button();
 
-	}
+		// Seulement si le step a changé
+		if (step != last_step)
+		{
+		  const menu_state_t *entry = NULL;
+		  for (int i = 0; menu_state[i].text != NULL; i++) {
+			if (menu_state[i].step == step) {
+			  entry = &menu_state[i];
+			  break;
+			}
+		  }
+
+		  if (entry != NULL) {
+			clearLCD();
+			setCursor(0, 0);
+			writeLCD(entry->text);
+			last_step = step;  // Mettre à jour le step affiché
+		  }
+		}
+
+		// Si bouton pressé : sortir du menu et lancer l’action
+		if (button)
+		{
+		  osEventFlagsSet(ledEventHandle, FLAG_LED2);
+		  const menu_state_t *entry = NULL;
+		  for (int i = 0; menu_state[i].text != NULL; i++) {
+			if (menu_state[i].step == step) {
+			  entry = &menu_state[i];
+			  break;
+			}
+		  }
+
+		  if (entry != NULL) {
+			osEventFlagsSet(smEventHandle, FLAG_SM_OFF); // exit statemachine
+			osEventFlagsSet(funcEventHandle, entry->flag); // set task flag
+			last_step = -1;
+		  }
+		}
+	  }
+	  else
+	  {
+		osDelay(100);  // on dort quand le menu n’est pas actif
+	  }
+	  osDelay(20); // 50 Hz
   }
   /* USER CODE END StateMachine */
 }
 
+/* USER CODE BEGIN Header_leds */
+/**
+* @brief Function implementing the ledsTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_leds */
+void leds(void *argument)
+{
+  /* USER CODE BEGIN leds */
+  /* Infinite loop */
+  for(;;)
+  {
+	  uint32_t flags = osEventFlagsWait(ledEventHandle, FLAG_LED1|FLAG_LED2|FLAG_LED3, osFlagsWaitAny, osWaitForever);
+
+	  if (flags & FLAG_LED1) {
+		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+		osDelay(50);
+		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+
+	  }
+
+	  if (flags & FLAG_LED2) {
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+		osDelay(50);
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+	  }
+
+	  if (flags & FLAG_LED3) {
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+		osDelay(50);
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+	  }
+		osDelay(50);
+  }
+  /* USER CODE END leds */
+}
+
+/* USER CODE BEGIN Header_infoFunc */
+/**
+* @brief Function implementing the infoFuncTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_infoFunc */
+void infoFunc(void *argument)
+{
+  /* USER CODE BEGIN infoFunc */
+  /* Infinite loop */
+  for(;;)
+  {
+	  uint32_t flags = osEventFlagsGet(funcEventHandle);
+	  static bool FIF = false; // first in function
+
+	  if (flags & FLAG_INFO) {
+		  if (!FIF) {
+			  clearLCD();
+			  setCursor(0, 0);
+			  writeLCD("Julien NAVEZ");
+			  setCursor(0, 1);
+			  writeLCD("Nattan PAPIER");
+
+			  FIF = true;
+		  } else {
+			  bool button = encoder_get_button();
+
+			  if (button) {
+				  exitFunc();
+				  FIF = false;
+			  }
+		  }
+	  }
+  }
+  /* USER CODE END infoFunc */
+}
+
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
+void exitFunc(void) {
+	encoder_reset_position();
 
+	if (funcEventHandle != NULL) {
+		osEventFlagsClear(funcEventHandle, FLAG_INFO);
+		osEventFlagsClear(funcEventHandle, FLAG_SENSOR);
+		osEventFlagsClear(funcEventHandle, FLAG_CONV);
+		osEventFlagsClear(funcEventHandle, FLAG_ACT);
+		osEventFlagsClear(funcEventHandle, FLAG_MPU);
+	}
+		//osEventFlagsSet(funcEventHandle, 0xFFFFFFFF);
+
+
+	if (smEventHandle != NULL)
+		osEventFlagsClear(smEventHandle, FLAG_SM_OFF);
+}
 /* USER CODE END Application */
 
