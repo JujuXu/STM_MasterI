@@ -1,10 +1,10 @@
-20:26:04 **** Incremental Build of configuration Debug for project Master1_Project ****
+22:22:27 **** Incremental Build of configuration Debug for project Master1_Project ****
 make -j16 all 
 arm-none-eabi-size  Master1_Project.elf 
    text	   data	    bss	    dec	    hex	filename
-  31308	     20	  21780	  53108	   cf74	Master1_Project.elf
+  38240	    108	  22156	  60504	   ec58	Master1_Project.elf
 Finished building: default.size.stdout
  
 
-20:26:05 Build Finished. 0 errors, 0 warnings. (took 348ms)
+22:22:28 Build Finished. 0 errors, 0 warnings. (took 301ms)
 

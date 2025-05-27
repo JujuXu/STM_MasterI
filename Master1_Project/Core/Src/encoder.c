@@ -29,6 +29,7 @@ void encoder_update(void) {
     ticks += delta;
     int16_t new_steps = (int16_t)(ticks / 4);
 
+    taskENTER_CRITICAL();
     if (is_cyclic) {
     	 int32_t range = max - min + 1;
     	 steps = ((new_steps - min) % range + range) % range + min;
@@ -37,6 +38,7 @@ void encoder_update(void) {
         if (new_steps > max) new_steps = max;
         steps = new_steps;
     }
+    taskEXIT_CRITICAL();
 }
 
 int32_t encoder_get_ticks(void) {
@@ -48,16 +50,22 @@ int16_t encoder_get_steps(void) {
 }
 
 void encoder_set_min(int16_t min_val) {
+	taskENTER_CRITICAL();
     min = min_val;
+    taskEXIT_CRITICAL();
 }
 
 void encoder_set_max(int16_t max_val) {
+	taskENTER_CRITICAL();
     max = max_val;
+    taskEXIT_CRITICAL();
 }
 
 void encoder_reset_position(void) {
+	taskENTER_CRITICAL();
     ticks = 0;
     steps = 0;
+    taskEXIT_CRITICAL();
 }
 
 void encoder_set_cyclic(bool enable) {
@@ -73,7 +81,9 @@ void encoder_button_update(void) {
 	bool current = HAL_GPIO_ReadPin(ENC_BUTT_GPIO_Port, ENC_BUTT_Pin) == GPIO_PIN_RESET;
 	if (current && !last_state) {
 		last_state = true;
+		taskENTER_CRITICAL();
 		button = true;
+		taskEXIT_CRITICAL();
 		/*HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 		osDelay(50);
 		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
@@ -92,8 +102,9 @@ void encoder_button_update(void) {
 
 bool encoder_get_button(void) {
 	if (button) {
+		taskENTER_CRITICAL();
 		button = false;
-
+		taskEXIT_CRITICAL();
 		/*HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 		osDelay(50);
 		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);*/
@@ -102,4 +113,11 @@ bool encoder_get_button(void) {
 	}
 
 	return button;
+}
+
+void encoder_set_step(int16_t step) {
+	taskENTER_CRITICAL();
+	steps = step;
+	ticks = step*4;
+	taskEXIT_CRITICAL();
 }

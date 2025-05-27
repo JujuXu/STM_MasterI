@@ -7,6 +7,8 @@
 		<item value="step"/>
 	</list>
 	<list key="searchhistory">
+		<item value="mutex"/>
+		<item value="exitFunc"/>
 		<item value="encButtMutexHandle"/>
 		<item value="crans"/>
 	</list>

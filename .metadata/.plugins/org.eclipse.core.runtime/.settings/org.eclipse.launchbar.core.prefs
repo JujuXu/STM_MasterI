@@ -3,7 +3,7 @@ LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/name
 LaunchTargetManager/org.eclipse.launchbar.core.launchTargetType.local,Local/os=win32
 configDescList=org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:TP1_F446ZE Debug,org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:TP2 Debug,org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:TP3 Debug,org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:TP4 Debug,org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:Master1_Project Debug
 eclipse.preferences.version=1
-org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:Master1_Project\ Debug/activeLaunchMode=run
+org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:Master1_Project\ Debug/activeLaunchMode=debug
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:Master1_Project\ Debug/activeLaunchTarget=null\:---
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:TP1_F446ZE\ Debug/activeLaunchMode=run
 org.eclipse.cdt.dsf.gdb.gdbRemotedescriptorType\:TP1_F446ZE\ Debug/activeLaunchTarget=null\:---
