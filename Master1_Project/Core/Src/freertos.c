@@ -30,6 +30,7 @@
 #include "lcd.h"
 #include "menu.h"
 #include <stdio.h>
+#include "ADXL345.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -117,6 +118,37 @@ const osThreadAttr_t mpuFuncTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityLow,
 };
+/* Definitions for MappingThread */
+osThreadId_t MappingThreadHandle;
+const osThreadAttr_t MappingThread_attributes = {
+  .name = "MappingThread",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for DutycycleThread */
+osThreadId_t DutycycleThreadHandle;
+const osThreadAttr_t DutycycleThread_attributes = {
+  .name = "DutycycleThread",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for VibratorThread */
+osThreadId_t VibratorThreadHandle;
+const osThreadAttr_t VibratorThread_attributes = {
+  .name = "VibratorThread",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for myADXLQueue */
+osMessageQueueId_t myADXLQueueHandle;
+const osMessageQueueAttr_t myADXLQueue_attributes = {
+  .name = "myADXLQueue"
+};
+/* Definitions for myVibratorQueue */
+osMessageQueueId_t myVibratorQueueHandle;
+const osMessageQueueAttr_t myVibratorQueue_attributes = {
+  .name = "myVibratorQueue"
+};
 /* Definitions for mpuMode */
 osMutexId_t mpuModeHandle;
 const osMutexAttr_t mpuMode_attributes = {
@@ -157,6 +189,9 @@ void sensFunc(void *argument);
 void convFunc(void *argument);
 void actFunc(void *argument);
 void mpuFunc(void *argument);
+void StartMappingThread(void *argument);
+void StartDutycycleThread(void *argument);
+void StartVibratorThread(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -187,6 +222,13 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* creation of myADXLQueue */
+  myADXLQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &myADXLQueue_attributes);
+
+  /* creation of myVibratorQueue */
+  myVibratorQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &myVibratorQueue_attributes);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -219,6 +261,15 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of mpuFuncTask */
   mpuFuncTaskHandle = osThreadNew(mpuFunc, NULL, &mpuFuncTask_attributes);
+
+  /* creation of MappingThread */
+  MappingThreadHandle = osThreadNew(StartMappingThread, NULL, &MappingThread_attributes);
+
+  /* creation of DutycycleThread */
+  DutycycleThreadHandle = osThreadNew(StartDutycycleThread, NULL, &DutycycleThread_attributes);
+
+  /* creation of VibratorThread */
+  VibratorThreadHandle = osThreadNew(StartVibratorThread, NULL, &VibratorThread_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -404,9 +455,9 @@ void leds(void *argument)
 	  }
 
 	  if (flags & FLAG_LED3) {
-		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
 		osDelay(50);
-		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
 	  }
 		osDelay(50);
   }
@@ -462,6 +513,7 @@ void sensFunc(void *argument)
 {
   /* USER CODE BEGIN sensFunc */
   int16_t step = 0;
+  int16_t x_gyro = 0, y_gyro = 0, z_gyro = 0;
   /* Infinite loop */
   for(;;)
   {
@@ -469,12 +521,12 @@ void sensFunc(void *argument)
 
 	  if (flags & FLAG_SENSOR) {
 		  encoder_set_min(0);
-		  encoder_set_max(2);
+		  encoder_set_max(0);
 
 		  step = encoder_get_steps();
 
 		  clearLCD();
-		  if (step == 0) {
+		  /*if (step == 0) {
 			  setCursor(0, 0);
 			  writeLCD("ax");
 			  writeLCD("0.000");
@@ -494,6 +546,27 @@ void sensFunc(void *argument)
 			  setCursor(0, 1);
 			  writeLCD("gz");
 			  writeLCD("0.000");
+		  }*/
+
+		  if (step == 0) {
+		      ADXL345_ReadData(&x_gyro, &y_gyro, &z_gyro);
+
+		      char x_str[16];
+		      char y_str[16];
+		      char z_str[16];
+			  snprintf(x_str, sizeof(x_str), "%d", x_gyro);
+			  snprintf(y_str, sizeof(y_str), "%d", y_gyro);
+			  snprintf(z_str, sizeof(z_str), "%d", z_gyro);
+
+			  setCursor(0, 0);
+			  writeLCD("Gx:");
+			  writeLCD(x_str);
+			  writeLCD(" Gy:");
+			  writeLCD(y_str);
+
+			  setCursor(0, 1);
+			  writeLCD("Gz:");
+			  writeLCD(z_str);
 		  }
 
 		  bool button = encoder_get_button();
@@ -558,8 +631,6 @@ void convFunc(void *argument)
 
 				  osMutexAcquire(convModeHandle, osWaitForever);
 
-				  // TODO change mode
-
 				  conv_mode = (uint8_t) step;
 
 				  osMutexRelease(convModeHandle);
@@ -596,6 +667,8 @@ void actFunc(void *argument)
 	};
   static int16_t step = 0;
   static int16_t last_step = -1;
+  uint32_t DC = 0;
+  static uint32_t last_DC = -1;
   /* Infinite loop */
   for(;;)
   {
@@ -618,10 +691,21 @@ void actFunc(void *argument)
 			  if (conv_mode == 0) {
 				  setCursor(0, 1);
 				  writeLCD("Setpoint: ");
-				  writeLCD("69"); // auto setpoint variable
-				  writeLCD(" %");
+				  //TIM1->CCR1 = (dutyCycle * (TIM1->ARR + 1)) / 100; // Set duty cycle
+
+				  DC = 100 * TIM1->CCR1 / (TIM1->ARR + 1);
+
+				  if (DC != last_DC) {
+					  last_DC = DC;
+
+					  char buffer[16];
+					  snprintf(buffer, sizeof(buffer), "%ld", DC);
+
+					  writeLCD(buffer); // auto setpoint variable
+					  writeLCD(" %");
+				  }
 			  } else if (conv_mode == 1) {
-				  encoder_set_min(0);
+				  encoder_set_min(30);
 				  encoder_set_max(100);
 
 				  step = encoder_get_steps();
@@ -636,6 +720,9 @@ void actFunc(void *argument)
 
 					  writeLCD(buffer);
 					  writeLCD("%   ");
+
+					  // TODO SET PWM VALUE
+					  TIM1->CCR1 = (step * (TIM1->ARR + 1)) / 100; // Set duty cycle
 				  }
 			  }
 
@@ -669,10 +756,9 @@ void mpuFunc(void *argument)
 	static int16_t step = 0;
 	static int16_t last_step = -1;
 	char *mode[] = {
-		  "Acceleration",
-		  "GYRO",
-		  "Chock",
-		  "Threshold"
+		  "X-Axis",
+		  "Y-Axis",
+		  "Z-Axis"
 	};
 	/* Infinite loop */
 	for(;;)
@@ -681,7 +767,7 @@ void mpuFunc(void *argument)
 
 	  if (flags & FLAG_MPU) {
 		  encoder_set_min(0);
-		  encoder_set_max(3);
+		  encoder_set_max(2);
 
 		  if (!FIF) {
 			  clearLCD();
@@ -707,8 +793,6 @@ void mpuFunc(void *argument)
 
 				  osMutexAcquire(mpuModeHandle, osWaitForever);
 
-				  // TODO change mode
-
 				  mpu_mode = (uint8_t) step;
 
 				  osMutexRelease(mpuModeHandle);
@@ -726,6 +810,130 @@ void mpuFunc(void *argument)
 	  osDelay(1);
 	}
   /* USER CODE END mpuFunc */
+}
+
+/* USER CODE BEGIN Header_StartMappingThread */
+/**
+* @brief Function implementing the MappingThread thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartMappingThread */
+void StartMappingThread(void *argument)
+{
+  /* USER CODE BEGIN StartMappingThread */
+	int16_t input_value = 0; // Example input value
+	int16_t input_min = -280;    // Input range minimum
+	int16_t input_max = 280;  // Input range maximum
+	int16_t output_min = 30;  // Output range minimum
+	int16_t output_max = 100; // Output range maximum
+
+
+	int16_t valueReceived;
+	int16_t valueToSend;
+	/* Infinite loop */
+	for(;;)
+	{
+
+
+	  osMessageQueueGet(myADXLQueueHandle, &valueReceived, 0,osWaitForever);
+
+	  int16_t map_value(int16_t input_value, int16_t input_min, int16_t input_max, int16_t output_min, int16_t output_max) {
+	return (input_value - input_min) * (output_max - output_min) / (input_max - input_min) + output_min;
+			}
+
+	  input_value = valueReceived;
+
+	  int16_t mapped_value = map_value(input_value, input_min, input_max, output_min, output_max);
+
+	  valueToSend = mapped_value;
+
+	  osMessageQueuePut(myVibratorQueueHandle, &valueToSend, 0,0);
+
+	  //sprintf(buffer, "Valeur: %d\r\n", mapped_value);
+	  //HAL_UART_Transmit(&huart3, (uint16_t *)buffer, strlen(buffer), HAL_MAX_DELAY);
+
+	  osDelay(500);
+	}
+  /* USER CODE END StartMappingThread */
+}
+
+/* USER CODE BEGIN Header_StartDutycycleThread */
+/**
+* @brief Function implementing the DutycycleThread thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDutycycleThread */
+void StartDutycycleThread(void *argument)
+{
+  /* USER CODE BEGIN StartDutycycleThread */
+  uint8_t dutyCycle = 50;
+
+  int16_t valueReceived;
+  /* Infinite loop */
+  for(;;)
+  {
+	osEventFlagsSet(ledEventHandle, FLAG_LED3);
+	osMessageQueueGet(myVibratorQueueHandle, &valueReceived, 0,osWaitForever);
+
+	dutyCycle = valueReceived;
+	if (dutyCycle > 100) dutyCycle = 100; // Clamp duty cycle to 100%
+
+	osMutexAcquire(convModeHandle, osWaitForever);
+	if (conv_mode == 0) TIM1->CCR1 = (dutyCycle * (TIM1->ARR + 1)) / 100; // Set duty cycle
+	osMutexRelease(convModeHandle);
+
+	//sprintf(buffer, "duty cycle: %d\r\n", dutyCycle);
+	//HAL_UART_Transmit(&huart3, (uint8_t *)buffer, strlen(buffer), HAL_MAX_DELAY);
+	osDelay(500);
+  }
+  /* USER CODE END StartDutycycleThread */
+}
+
+/* USER CODE BEGIN Header_StartVibratorThread */
+/**
+* @brief Function implementing the VibratorThread thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartVibratorThread */
+void StartVibratorThread(void *argument)
+{
+  /* USER CODE BEGIN StartVibratorThread */
+	int16_t x_gyro = 0, y_gyro = 0, z_gyro = 0;
+
+	int16_t valueToSend;
+  /* Infinite loop */
+  for(;;)
+  {
+      ADXL345_ReadData(&x_gyro, &y_gyro, &z_gyro);
+
+      osMutexAcquire(mpuModeHandle, osWaitForever);
+	  switch (mpu_mode) {
+		  case 0: // Send x-axis data
+			  valueToSend = x_gyro;
+			  break;
+		  case 1: // Send y-axis data
+			  valueToSend = y_gyro;
+			  break;
+		  case 2: // Send z-axis data
+			  valueToSend = z_gyro;
+			  break;
+		  default:
+			  break;
+	  }
+	  osMutexRelease(mpuModeHandle);
+
+      osMessageQueuePut(myADXLQueueHandle, &valueToSend, 0,0);
+
+      //sprintf(buffer, "X: %d, Y: %d, Z: %d\r\n", x_gyro, y_gyro, z_gyro);
+      //HAL_UART_Transmit(&huart3, (uint16_t *)buffer, strlen(buffer), HAL_MAX_DELAY);
+
+      osDelay(500);
+
+  }
+  /* USER CODE END StartVibratorThread */
 }
 
 /* Private application code --------------------------------------------------*/

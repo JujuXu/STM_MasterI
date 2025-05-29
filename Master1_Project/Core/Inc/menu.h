@@ -46,7 +46,7 @@ typedef enum {
 const menu_state_t menu_state[] = {
 	// STATE		STEP	FLAG				TEXT
     {ST_INFO,   	0, 		FLAG_INFO,   		"Infos"},
-    {ST_SENSOR, 	1, 		FLAG_SENSOR, 		"Sensor GY-521"},
+    {ST_SENSOR, 	1, 		FLAG_SENSOR, 		"Sensor ADXL345"},
     {ST_CONV,   	2, 		FLAG_CONV,   		"Conversion"},
     {ST_ACT,    	3, 		FLAG_ACT,    		"Actuator"},
     {ST_MPU,    	4, 		FLAG_MPU,    		"MPU Mode"},

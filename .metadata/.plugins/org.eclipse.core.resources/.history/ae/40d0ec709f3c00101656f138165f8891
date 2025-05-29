@@ -1,0 +1,958 @@
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * File Name          : freertos.c
+  * Description        : Code for freertos applications
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2025 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+
+/* Includes ------------------------------------------------------------------*/
+#include "FreeRTOS.h"
+#include "task.h"
+#include "main.h"
+#include "cmsis_os.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include "tim.h"
+#include "encoder.h"
+#include "lcd.h"
+#include "menu.h"
+#include <stdio.h>
+#include "ADXL345.h"
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+#define FLAG_LED1		0x0001
+#define FLAG_LED2		0x0002
+#define FLAG_LED3		0x0004
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+/* USER CODE BEGIN Variables */
+uint8_t conv_mode = 0; // 0 auto 1 manual
+uint8_t mpu_mode = 0; // 0 acc 1 gyro 2 chock 3 threshold
+/* USER CODE END Variables */
+/* Definitions for defaultTask */
+osThreadId_t defaultTaskHandle;
+const osThreadAttr_t defaultTask_attributes = {
+  .name = "defaultTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for encoderTask */
+osThreadId_t encoderTaskHandle;
+const osThreadAttr_t encoderTask_attributes = {
+  .name = "encoderTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for SM_Task */
+osThreadId_t SM_TaskHandle;
+const osThreadAttr_t SM_Task_attributes = {
+  .name = "SM_Task",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for ledsTask */
+osThreadId_t ledsTaskHandle;
+const osThreadAttr_t ledsTask_attributes = {
+  .name = "ledsTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for infoFuncTask */
+osThreadId_t infoFuncTaskHandle;
+const osThreadAttr_t infoFuncTask_attributes = {
+  .name = "infoFuncTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for sensFuncTask */
+osThreadId_t sensFuncTaskHandle;
+const osThreadAttr_t sensFuncTask_attributes = {
+  .name = "sensFuncTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for convFuncTask */
+osThreadId_t convFuncTaskHandle;
+const osThreadAttr_t convFuncTask_attributes = {
+  .name = "convFuncTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for actFuncTask */
+osThreadId_t actFuncTaskHandle;
+const osThreadAttr_t actFuncTask_attributes = {
+  .name = "actFuncTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for mpuFuncTask */
+osThreadId_t mpuFuncTaskHandle;
+const osThreadAttr_t mpuFuncTask_attributes = {
+  .name = "mpuFuncTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for MappingThread */
+osThreadId_t MappingThreadHandle;
+const osThreadAttr_t MappingThread_attributes = {
+  .name = "MappingThread",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for DutycycleThread */
+osThreadId_t DutycycleThreadHandle;
+const osThreadAttr_t DutycycleThread_attributes = {
+  .name = "DutycycleThread",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for VibratorThread */
+osThreadId_t VibratorThreadHandle;
+const osThreadAttr_t VibratorThread_attributes = {
+  .name = "VibratorThread",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for myADXLQueue */
+osMessageQueueId_t myADXLQueueHandle;
+const osMessageQueueAttr_t myADXLQueue_attributes = {
+  .name = "myADXLQueue"
+};
+/* Definitions for myVibratorQueue */
+osMessageQueueId_t myVibratorQueueHandle;
+const osMessageQueueAttr_t myVibratorQueue_attributes = {
+  .name = "myVibratorQueue"
+};
+/* Definitions for mpuMode */
+osMutexId_t mpuModeHandle;
+const osMutexAttr_t mpuMode_attributes = {
+  .name = "mpuMode"
+};
+/* Definitions for convMode */
+osMutexId_t convModeHandle;
+const osMutexAttr_t convMode_attributes = {
+  .name = "convMode"
+};
+/* Definitions for smEvent */
+osEventFlagsId_t smEventHandle;
+const osEventFlagsAttr_t smEvent_attributes = {
+  .name = "smEvent"
+};
+/* Definitions for funcEvent */
+osEventFlagsId_t funcEventHandle;
+const osEventFlagsAttr_t funcEvent_attributes = {
+  .name = "funcEvent"
+};
+/* Definitions for ledEvent */
+osEventFlagsId_t ledEventHandle;
+const osEventFlagsAttr_t ledEvent_attributes = {
+  .name = "ledEvent"
+};
+
+/* Private function prototypes -----------------------------------------------*/
+/* USER CODE BEGIN FunctionPrototypes */
+void exitFunc(void);
+/* USER CODE END FunctionPrototypes */
+
+void StartDefaultTask(void *argument);
+void encoder(void *argument);
+void StateMachine(void *argument);
+void leds(void *argument);
+void infoFunc(void *argument);
+void sensFunc(void *argument);
+void convFunc(void *argument);
+void actFunc(void *argument);
+void mpuFunc(void *argument);
+void StartMappingThread(void *argument);
+void StartDutycycleThread(void *argument);
+void StartVibratorThread(void *argument);
+
+void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/**
+  * @brief  FreeRTOS initialization
+  * @param  None
+  * @retval None
+  */
+void MX_FREERTOS_Init(void) {
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+  /* Create the mutex(es) */
+  /* creation of mpuMode */
+  mpuModeHandle = osMutexNew(&mpuMode_attributes);
+
+  /* creation of convMode */
+  convModeHandle = osMutexNew(&convMode_attributes);
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* creation of myADXLQueue */
+  myADXLQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &myADXLQueue_attributes);
+
+  /* creation of myVibratorQueue */
+  myVibratorQueueHandle = osMessageQueueNew (16, sizeof(uint16_t), &myVibratorQueue_attributes);
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of defaultTask */
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of encoderTask */
+  encoderTaskHandle = osThreadNew(encoder, NULL, &encoderTask_attributes);
+
+  /* creation of SM_Task */
+  SM_TaskHandle = osThreadNew(StateMachine, NULL, &SM_Task_attributes);
+
+  /* creation of ledsTask */
+  ledsTaskHandle = osThreadNew(leds, NULL, &ledsTask_attributes);
+
+  /* creation of infoFuncTask */
+  infoFuncTaskHandle = osThreadNew(infoFunc, NULL, &infoFuncTask_attributes);
+
+  /* creation of sensFuncTask */
+  sensFuncTaskHandle = osThreadNew(sensFunc, NULL, &sensFuncTask_attributes);
+
+  /* creation of convFuncTask */
+  convFuncTaskHandle = osThreadNew(convFunc, NULL, &convFuncTask_attributes);
+
+  /* creation of actFuncTask */
+  actFuncTaskHandle = osThreadNew(actFunc, NULL, &actFuncTask_attributes);
+
+  /* creation of mpuFuncTask */
+  mpuFuncTaskHandle = osThreadNew(mpuFunc, NULL, &mpuFuncTask_attributes);
+
+  /* creation of MappingThread */
+  MappingThreadHandle = osThreadNew(StartMappingThread, NULL, &MappingThread_attributes);
+
+  /* creation of DutycycleThread */
+  DutycycleThreadHandle = osThreadNew(StartDutycycleThread, NULL, &DutycycleThread_attributes);
+
+  /* creation of VibratorThread */
+  VibratorThreadHandle = osThreadNew(StartVibratorThread, NULL, &VibratorThread_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* creation of smEvent */
+  smEventHandle = osEventFlagsNew(&smEvent_attributes);
+
+  /* creation of funcEvent */
+  funcEventHandle = osEventFlagsNew(&funcEvent_attributes);
+
+  /* creation of ledEvent */
+  ledEventHandle = osEventFlagsNew(&ledEvent_attributes);
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+}
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  /* USER CODE BEGIN StartDefaultTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartDefaultTask */
+}
+
+/* USER CODE BEGIN Header_encoder */
+/**
+* @brief Function implementing the encoderTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_encoder */
+void encoder(void *argument)
+{
+  /* USER CODE BEGIN encoder */
+  /* Infinite loop */
+  for(;;)
+  {
+		encoder_update();
+		encoder_button_update();
+
+		osDelay(10);  // 100 Hz
+  }
+  /* USER CODE END encoder */
+}
+
+/* USER CODE BEGIN Header_StateMachine */
+/**
+* @brief Function implementing the SM_Task thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StateMachine */
+void StateMachine(void *argument)
+{
+  /* USER CODE BEGIN StateMachine */
+  static bool FIF = false;
+  static int16_t last_step = -1;  // Rendue statique pour garder la valeur entre les appels
+
+  for(;;)
+  {
+    uint32_t flags = osEventFlagsGet(smEventHandle);
+
+    if (!(flags & FLAG_SM_OFF))  // tant que menu actif
+    {
+      if (!FIF) {
+        if (last_step >= 0) {
+          encoder_set_step(last_step);  // Revenir à la dernière position connue
+        }
+
+        encoder_set_min(0);
+        encoder_set_max(4);
+
+        const menu_state_t *entry = NULL;
+        for (int i = 0; menu_state[i].text != NULL; i++) {
+          if (menu_state[i].step == last_step) {
+            entry = &menu_state[i];
+            break;
+          }
+        }
+
+        if (entry != NULL) {
+          clearLCD();
+          setCursor(0, 0);
+          writeLCD(entry->text);  // Réafficher le texte correspondant
+        }
+
+        FIF = true;  // On a fait le setup d'entrée
+      }
+
+      osEventFlagsSet(ledEventHandle, FLAG_LED1);  // Clignotement menu actif
+
+      int16_t step = encoder_get_steps();
+      bool button = encoder_get_button();
+
+      if (step != last_step)
+      {
+        const menu_state_t *entry = NULL;
+        for (int i = 0; menu_state[i].text != NULL; i++) {
+          if (menu_state[i].step == step) {
+            entry = &menu_state[i];
+            break;
+          }
+        }
+
+        if (entry != NULL) {
+          clearLCD();
+          setCursor(0, 0);
+          writeLCD(entry->text);
+          last_step = step;
+        }
+      }
+
+      if (button)
+      {
+        osEventFlagsSet(ledEventHandle, FLAG_LED2);
+
+        const menu_state_t *entry = NULL;
+        for (int i = 0; menu_state[i].text != NULL; i++) {
+          if (menu_state[i].step == step) {
+            entry = &menu_state[i];
+            break;
+          }
+        }
+
+        if (entry != NULL) {
+          osEventFlagsSet(funcEventHandle, entry->flag); // set task flag
+          osEventFlagsSet(smEventHandle, FLAG_SM_OFF);   // exit statemachine
+          FIF = false;  // Réinitialise pour le prochain retour dans le menu
+        }
+      }
+    }
+    else
+    {
+      osDelay(100);  // Repos hors mode menu
+    }
+
+    osDelay(20); // 50 Hz
+  }
+  /* USER CODE END StateMachine */
+}
+
+/* USER CODE BEGIN Header_leds */
+/**
+* @brief Function implementing the ledsTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_leds */
+void leds(void *argument)
+{
+  /* USER CODE BEGIN leds */
+  /* Infinite loop */
+  for(;;)
+  {
+	  uint32_t flags = osEventFlagsWait(ledEventHandle, FLAG_LED1|FLAG_LED2|FLAG_LED3, osFlagsWaitAny, osWaitForever);
+
+	  if (flags & FLAG_LED1) {
+		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+		osDelay(50);
+		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_RESET);
+
+	  }
+
+	  if (flags & FLAG_LED2) {
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+		osDelay(50);
+		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+
+	  }
+
+	  if (flags & FLAG_LED3) {
+		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+		osDelay(50);
+		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+	  }
+		osDelay(50);
+  }
+  /* USER CODE END leds */
+}
+
+/* USER CODE BEGIN Header_infoFunc */
+/**
+* @brief Function implementing the infoFuncTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_infoFunc */
+void infoFunc(void *argument)
+{
+  /* USER CODE BEGIN infoFunc */
+  static bool FIF = false; // first in function
+  /* Infinite loop */
+  for(;;)
+  {
+	  uint32_t flags = osEventFlagsGet(funcEventHandle);
+
+	  if (flags & FLAG_INFO) {
+		  if (!FIF) {
+			  clearLCD();
+			  setCursor(0, 0);
+			  writeLCD("Julien NAVEZ");
+			  setCursor(0, 1);
+			  writeLCD("Nattan PAPIER");
+
+			  FIF = true;
+		  } else {
+			  bool button = encoder_get_button();
+
+			  if (button) {
+				  exitFunc();
+				  FIF = false;
+			  }
+		  }
+	  }
+  }
+  /* USER CODE END infoFunc */
+}
+
+/* USER CODE BEGIN Header_sensFunc */
+/**
+* @brief Function implementing the sensFuncTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_sensFunc */
+void sensFunc(void *argument)
+{
+  /* USER CODE BEGIN sensFunc */
+  int16_t step = 0;
+  int16_t x_gyro = 0, y_gyro = 0, z_gyro = 0;
+  /* Infinite loop */
+  for(;;)
+  {
+	  uint32_t flags = osEventFlagsGet(funcEventHandle);
+
+	  if (flags & FLAG_SENSOR) {
+		  encoder_set_min(0);
+		  encoder_set_max(0);
+
+		  step = encoder_get_steps();
+
+		  clearLCD();
+		  /*if (step == 0) {
+			  setCursor(0, 0);
+			  writeLCD("ax");
+			  writeLCD("0.000");
+			  writeLCD(" ay");
+			  writeLCD("0.000");
+
+			  setCursor(0, 1);
+			  writeLCD("az");
+			  writeLCD("0.000");
+		  } else if (step == 1) {
+			  setCursor(0, 0);
+			  writeLCD("gx");
+			  writeLCD("0.000");
+			  writeLCD(" gy");
+			  writeLCD("0.000");
+
+			  setCursor(0, 1);
+			  writeLCD("gz");
+			  writeLCD("0.000");
+		  }*/
+
+		  if (step == 0) {
+		      ADXL345_ReadData(&x_gyro, &y_gyro, &z_gyro);
+
+		      char x_str[16];
+		      char y_str[16];
+		      char z_str[16];
+			  snprintf(x_str, sizeof(x_str), "%d", x_gyro);
+			  snprintf(y_str, sizeof(y_str), "%d", y_gyro);
+			  snprintf(z_str, sizeof(z_str), "%d", z_gyro);
+
+			  setCursor(0, 0);
+			  writeLCD("Gx:");
+			  writeLCD(x_str);
+			  writeLCD(" Gy:");
+			  writeLCD(y_str);
+
+			  setCursor(0, 1);
+			  writeLCD("Gz:");
+			  writeLCD(z_str);
+		  }
+
+		  bool button = encoder_get_button();
+
+		  if (button) {
+			  exitFunc();
+		  }
+
+		  osDelay(200);
+	  }
+  }
+  /* USER CODE END sensFunc */
+}
+
+/* USER CODE BEGIN Header_convFunc */
+/**
+* @brief Function implementing the convFuncTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_convFunc */
+void convFunc(void *argument)
+{
+  /* USER CODE BEGIN convFunc */
+  static bool FIF = false; // first in function
+  static int16_t step = 0;
+  static int16_t last_step = -1;
+  char *mode[] = {
+		  "AUTO",
+		  "MANUAL"
+  };
+  /* Infinite loop */
+  for(;;)
+  {
+	  uint32_t flags = osEventFlagsGet(funcEventHandle);
+
+	  if (flags & FLAG_CONV) {
+		  encoder_set_min(0);
+		  encoder_set_max(1);
+
+		  if (!FIF) {
+			  clearLCD();
+			  setCursor(0, 0);
+			  writeLCD("Mode:");
+
+			  FIF = true;
+			  encoder_set_step(step);
+			  last_step = -1;
+		  } else {
+			  step = encoder_get_steps();
+
+			  if(step != last_step) {
+				  last_step = step;
+
+				  setCursor(0, 1);
+				  writeLCD("                ");
+				  setCursor(0, 1);
+
+				  if (step < sizeof(mode)) {
+					  writeLCD(mode[step]);
+				  }
+
+				  osMutexAcquire(convModeHandle, osWaitForever);
+
+				  conv_mode = (uint8_t) step;
+
+				  osMutexRelease(convModeHandle);
+			  }
+
+			  bool button = encoder_get_button();
+
+			  if (button) {
+				  exitFunc();
+				  FIF = false;
+			  }
+		  }
+	  }
+
+	  osDelay(1);
+  }
+  /* USER CODE END convFunc */
+}
+
+/* USER CODE BEGIN Header_actFunc */
+/**
+* @brief Function implementing the actFuncTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_actFunc */
+void actFunc(void *argument)
+{
+  /* USER CODE BEGIN actFunc */
+  static bool FIF = false; // first in function
+  char *mode[] = {
+		  "AUTO",
+		  "MAN"
+	};
+  static int16_t step = 0;
+  static int16_t last_step = -1;
+  uint32_t DC = 0;
+  static uint32_t last_DC = -1;
+  /* Infinite loop */
+  for(;;)
+  {
+	  uint32_t flags = osEventFlagsGet(funcEventHandle);
+
+	  if (flags & FLAG_ACT) {
+		  if (!FIF) {
+			  clearLCD();
+			  setCursor(0, 0);
+			  writeLCD("VM QYF-740  ");
+			  if (conv_mode >= 0 && conv_mode < sizeof(mode)) {
+				  writeLCD(mode[conv_mode]);
+			  }
+
+			  FIF = true;
+			  encoder_set_step(step);
+			  last_step = -1;
+		  } else {
+			  osMutexAcquire(convModeHandle, osWaitForever);
+			  if (conv_mode == 0) {
+				  setCursor(0, 1);
+				  writeLCD("Setpoint: ");
+
+				  // TODO replace 69 by auto pwm value
+				  //TIM1->CCR1 = (dutyCycle * (TIM1->ARR + 1)) / 100; // Set duty cycle
+
+				  DC = 100 * TIM1->CCR1 / (TIM1->ARR + 1);
+
+				  if (DC != last_DC) {
+					  last_DC = DC;
+
+					  char buffer[16];
+					  snprintf(buffer, sizeof(buffer), "%d", DC);
+
+					  writeLCD(buffer); // auto setpoint variable
+					  writeLCD(" %");
+				  }
+			  } else if (conv_mode == 1) {
+				  encoder_set_min(30);
+				  encoder_set_max(100);
+
+				  step = encoder_get_steps();
+
+				  if (step != last_step) {
+					  last_step = step;
+					  setCursor(0, 1);
+					  writeLCD("PWM: ");
+
+					  char buffer[16];
+					  snprintf(buffer, sizeof(buffer), "%d", step);
+
+					  writeLCD(buffer);
+					  writeLCD("%   ");
+				  }
+			  }
+
+			  osMutexRelease(convModeHandle);
+
+			  bool button = encoder_get_button();
+
+			  if (button) {
+				  exitFunc();
+				  FIF = false;
+			  }
+		  }
+	  }
+
+	  osDelay(1);
+  }
+  /* USER CODE END actFunc */
+}
+
+/* USER CODE BEGIN Header_mpuFunc */
+/**
+* @brief Function implementing the mpuFuncTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_mpuFunc */
+void mpuFunc(void *argument)
+{
+  /* USER CODE BEGIN mpuFunc */
+	static bool FIF = false; // first in function
+	static int16_t step = 0;
+	static int16_t last_step = -1;
+	char *mode[] = {
+		  "X-Axis",
+		  "Y-Axis",
+		  "Z-Axis"
+	};
+	/* Infinite loop */
+	for(;;)
+	{
+	  uint32_t flags = osEventFlagsGet(funcEventHandle);
+
+	  if (flags & FLAG_MPU) {
+		  encoder_set_min(0);
+		  encoder_set_max(2);
+
+		  if (!FIF) {
+			  clearLCD();
+			  setCursor(0, 0);
+			  writeLCD("MPU Mode:");
+
+			  FIF = true;
+			  encoder_set_step(step);
+			  last_step = -1;
+		  } else {
+			  step = encoder_get_steps();
+
+			  if(step != last_step) {
+				  last_step = step;
+
+				  setCursor(0, 1);
+				  writeLCD("                ");
+				  setCursor(0, 1);
+
+				  if (step < sizeof(mode)) {
+					  writeLCD(mode[step]);
+				  }
+
+				  osMutexAcquire(mpuModeHandle, osWaitForever);
+
+				  // TODO change mode
+
+				  mpu_mode = (uint8_t) step;
+
+				  osMutexRelease(mpuModeHandle);
+			  }
+
+			  bool button = encoder_get_button();
+
+			  if (button) {
+				  exitFunc();
+				  FIF = false;
+			  }
+		  }
+	  }
+
+	  osDelay(1);
+	}
+  /* USER CODE END mpuFunc */
+}
+
+/* USER CODE BEGIN Header_StartMappingThread */
+/**
+* @brief Function implementing the MappingThread thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartMappingThread */
+void StartMappingThread(void *argument)
+{
+  /* USER CODE BEGIN StartMappingThread */
+	int16_t input_value = 0; // Example input value
+	int16_t input_min = -280;    // Input range minimum
+	int16_t input_max = 280;  // Input range maximum
+	int16_t output_min = 30;  // Output range minimum
+	int16_t output_max = 100; // Output range maximum
+
+
+	int16_t valueReceived;
+	int16_t valueToSend;
+	/* Infinite loop */
+	for(;;)
+	{
+
+
+	  osMessageQueueGet(myADXLQueueHandle, &valueReceived, 0,osWaitForever);
+
+	  int16_t map_value(int16_t input_value, int16_t input_min, int16_t input_max, int16_t output_min, int16_t output_max) {
+	return (input_value - input_min) * (output_max - output_min) / (input_max - input_min) + output_min;
+			}
+
+	  input_value = valueReceived;
+
+	  int16_t mapped_value = map_value(input_value, input_min, input_max, output_min, output_max);
+
+	  valueToSend = mapped_value;
+
+	  osMessageQueuePut(myVibratorQueueHandle, &valueToSend, 0,0);
+
+	  //sprintf(buffer, "Valeur: %d\r\n", mapped_value);
+	  //HAL_UART_Transmit(&huart3, (uint16_t *)buffer, strlen(buffer), HAL_MAX_DELAY);
+
+	  osDelay(500);
+	}
+  /* USER CODE END StartMappingThread */
+}
+
+/* USER CODE BEGIN Header_StartDutycycleThread */
+/**
+* @brief Function implementing the DutycycleThread thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDutycycleThread */
+void StartDutycycleThread(void *argument)
+{
+  /* USER CODE BEGIN StartDutycycleThread */
+  uint8_t dutyCycle = 50;
+
+  int16_t valueReceived;
+  /* Infinite loop */
+  for(;;)
+  {
+	  //osMutexAcquire(convModeHandle, osWaitForever);
+	  //osMutexRelease(convModeHandle);
+
+	  osEventFlagsSet(ledEventHandle, FLAG_LED3);
+      osMessageQueueGet(myVibratorQueueHandle, &valueReceived, 0,osWaitForever);
+
+      //dutyCycle = valueReceived;
+      if (dutyCycle > 100) dutyCycle = 100; // Clamp duty cycle to 100%
+        TIM1->CCR1 = (dutyCycle * (TIM1->ARR + 1)) / 100; // Set duty cycle
+        //sprintf(buffer, "duty cycle: %d\r\n", dutyCycle);
+        //HAL_UART_Transmit(&huart3, (uint8_t *)buffer, strlen(buffer), HAL_MAX_DELAY);
+        osDelay(500);
+  }
+  /* USER CODE END StartDutycycleThread */
+}
+
+/* USER CODE BEGIN Header_StartVibratorThread */
+/**
+* @brief Function implementing the VibratorThread thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartVibratorThread */
+void StartVibratorThread(void *argument)
+{
+  /* USER CODE BEGIN StartVibratorThread */
+	int16_t x_gyro = 0, y_gyro = 0, z_gyro = 0;
+
+	int16_t valueToSend;
+  /* Infinite loop */
+  for(;;)
+  {
+	  osMutexAcquire(mpuModeHandle, osWaitForever);
+      ADXL345_ReadData(&x_gyro, &y_gyro, &z_gyro);
+
+	  switch (mpu_mode) {
+		  case 1: // Send x-axis data
+			  valueToSend = x_gyro;
+			  break;
+		  case 2: // Send y-axis data
+			  valueToSend = y_gyro;
+			  break;
+		  case 3: // Send z-axis data
+			  valueToSend = z_gyro;
+			  break;
+		  default:
+			  break;
+	  }
+	  osMutexRelease(mpuModeHandle);
+
+      osMessageQueuePut(myADXLQueueHandle, &valueToSend, 0,0);
+
+      //sprintf(buffer, "X: %d, Y: %d, Z: %d\r\n", x_gyro, y_gyro, z_gyro);
+      //HAL_UART_Transmit(&huart3, (uint16_t *)buffer, strlen(buffer), HAL_MAX_DELAY);
+
+      osDelay(500);
+
+  }
+  /* USER CODE END StartVibratorThread */
+}
+
+/* Private application code --------------------------------------------------*/
+/* USER CODE BEGIN Application */
+void exitFunc(void) {
+	encoder_reset_position();
+
+	if (funcEventHandle != NULL) {
+		osEventFlagsClear(funcEventHandle, FLAG_INFO);
+		osEventFlagsClear(funcEventHandle, FLAG_SENSOR);
+		osEventFlagsClear(funcEventHandle, FLAG_CONV);
+		osEventFlagsClear(funcEventHandle, FLAG_ACT);
+		osEventFlagsClear(funcEventHandle, FLAG_MPU);
+	}
+		//osEventFlagsSet(funcEventHandle, 0xFFFFFFFF);
+
+
+	if (smEventHandle != NULL)
+		osEventFlagsClear(smEventHandle, FLAG_SM_OFF);
+}
+/* USER CODE END Application */
+

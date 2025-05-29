@@ -1,0 +1,2 @@
+../Core/Src/ADXL345.c:118:6:ADXL345_ReadData	48	static
+../Core/Src/ADXL345.c:130:6:ADXL345_Init	32	static

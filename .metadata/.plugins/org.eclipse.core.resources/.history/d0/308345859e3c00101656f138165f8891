@@ -1,0 +1,57 @@
+#ifndef _menu_h_
+#define _menu_h_
+
+#include "main.h"
+
+typedef struct
+{
+    unsigned char state;
+    int16_t step;
+    uint16_t flag;
+    char* text;
+} menu_state_t;
+
+/// MENU TEXT
+const char TXT_INFO[] 		=	"Infos";
+const char TXT_SENSOR[]		= 	"Sensor";
+const char TXT_CONV[]		=	"Conversion Mode";
+const char TXT_ACT[]		=   "Actuator Mode";
+const char TXT_MPU[]		=   "MPU Mode";
+
+// STATE MACHINE
+typedef enum {
+    ST_NONE = 0,
+    ST_INFO,
+    ST_SENSOR,
+    ST_CONV,
+    ST_ACT,
+    ST_MPU
+} menu_state_id_t;
+
+// FLAGS
+typedef enum {
+    FLAG_NONE   = 0x0000,
+    FLAG_INFO   = 0x0001,
+    FLAG_SENSOR = 0x0002,
+    FLAG_CONV   = 0x0004,
+    FLAG_ACT    = 0x0008,
+    FLAG_MPU    = 0x0010
+} menu_flag_t;
+
+typedef enum {
+    FLAG_SM_ON   = 0x0000,
+    FLAG_SM_OFF   = 0x0001
+} sm_flag_t;
+
+const menu_state_t menu_state[] = {
+	// STATE		STEP	FLAG				TEXT
+    {ST_INFO,   	0, 		FLAG_INFO,   		"Infos"},
+    {ST_SENSOR, 	1, 		FLAG_SENSOR, 		"Sensor GY-521"},
+    {ST_CONV,   	2, 		FLAG_CONV,   		"Conversion"},
+    {ST_ACT,    	3, 		FLAG_ACT,    		"Actuator"},
+    {ST_MPU,    	4, 		FLAG_MPU,    		"MPU Mode"},
+    {0,         	0, 		0,           		NULL},
+};
+
+
+#endif

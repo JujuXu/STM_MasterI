@@ -1,7 +1,2 @@
-steps
-ticks
-button
-funcEventHandle
-smEventHandle
-ledEventHandle
-entry
+conv_mode
+mpu_mode
