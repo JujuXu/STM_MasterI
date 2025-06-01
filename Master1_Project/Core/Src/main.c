@@ -99,8 +99,8 @@ int main(void)
   MX_TIM1_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
-  HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL); // encoder
-  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); // PWM D6 for VM
+  HAL_TIM_Encoder_Start(&htim4, TIM_CHANNEL_ALL); // start encoder mode on TIM4
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1); // start PWM D6 for VM
 
   HAL_Delay(100);
   initLCD();
